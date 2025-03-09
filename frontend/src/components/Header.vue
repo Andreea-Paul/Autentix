@@ -1,7 +1,8 @@
 <template>
   <header>
     <div v-if="wallet.walletAddress">
-      <p>Welcome, {{ wallet.walletAddress }}</p>
+      <p>Welcome, {{ user.firstName }} {{ user.lastName }}</p>
+      <p>Wallet Adress: {{ wallet.walletAddress }}</p>
       <p>Balance: {{ wallet.balance }} ETH</p>
       <router-link :to="goToPage" class="user-link">{{ buttonText }}</router-link>
       <button @click="logout" class="logout-btn">Logout</button>
@@ -17,21 +18,12 @@
 import { useWalletStore } from '@/stores/walletStore';
 import { useRoute } from 'vue-router';
 
-const { wallet, connectWallet, logout } = useWalletStore();
+const { wallet, user, connectWallet, logout } = useWalletStore();
 const route = useRoute();
 
 // Verifică ruta curentă și stabilește butonul corect
 const goToPage = route.path === '/' ? '/user' : '/';
 const buttonText = route.path === '/' ? 'Go to Dashboard' : 'Go to Home';
-
-// Funcția de conectare la MetaMask și adăugare a utilizatorului la backend
-async function connectAndAddUser() {
-  await connectWallet(); // Conectează portofelul
-  if (wallet.walletAddress) { // Asigură-te că adresa este validă
-    await addUserToBackend(wallet.walletAddress); // Adaugă utilizatorul pe backend
-  }
-}
-
 </script>
 
 <style scoped>

@@ -12,4 +12,4 @@ contract DocumentValidator {
     function verifyDocument(string memory documentHash) public view returns (bool) {
         return documentHashes[documentHash];
     }
-}
+} 
