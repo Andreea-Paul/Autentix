@@ -1,13 +1,16 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path';  // Importă path pentru a folosi aliasul
+import path from 'path'; 
+import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    tailwindcss(),],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),  // Adăugăm aliasul pentru `@` care va corespunde folderului `src`
+      '@': path.resolve(__dirname, 'src'),  
     },
   },
 })

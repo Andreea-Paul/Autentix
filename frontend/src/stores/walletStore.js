@@ -1,85 +1,125 @@
-import { defineStore } from 'pinia';
-import { reactive } from 'vue';
-import { ethers } from 'ethers';
-
+import { defineStore } from 'pinia'; // Pinia for state management
+import { reactive, watch } from 'vue'; // Vue for reactivity
+import { ethers } from 'ethers'; // Ethers.js for interacting with the Ethereum blockchain
+import { useRouter } from 'vue-router'; // Vue Router for navigation
 
 export const useWalletStore = defineStore('wallet', () => {
-  // Inițializăm starea din localStorage (dacă există)
+  const router = useRouter(); // Vue Router for programmatic navigation
+
+  // Reactive state for wallet data
   const wallet = reactive({
-    walletAddress: localStorage.getItem('walletAddress') || '', // Verificăm în localStorage
-    balance: localStorage.getItem('balance') || '', // Verificăm în localStorage
+    walletAddress: sessionStorage.getItem('walletAddress') || '',
+    balance: sessionStorage.getItem('balance') || '',
   });
 
+  // Reactive state for user data
   const user = reactive({
-    userId: localStorage.getItem('userId') || null, // Verificăm în localStorage
-    firstName: localStorage.getItem('firstName') || '', // Verificăm și firstName în localStorage
-    lastName: localStorage.getItem('lastName') || '', // Verificăm și lastName în localStorage
+    userId: sessionStorage.getItem('userId') || null,
+    name: sessionStorage.getItem('name') || '',
+    hasAccessCode: sessionStorage.getItem('hasAccessCode') === 'true',
   });
 
-  // Funcție pentru conectarea la MetaMask
+  // Watcher to sync wallet data with sessionStorage
+  watch(wallet, () => {
+    sessionStorage.setItem('walletAddress', wallet.walletAddress);
+    sessionStorage.setItem('balance', wallet.balance);
+  }, { deep: true });
+
+  // Watcher to sync user data with sessionStorage
+  watch([() => user.name, () => user.hasAccessCode], () => {
+    sessionStorage.setItem('name', user.name);
+    sessionStorage.setItem('hasAccessCode', user.hasAccessCode.toString());
+  });
+
+  // Connect the wallet via MetaMask and fetch wallet info
   async function connectWallet() {
-    if (window.ethereum) {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send('eth_requestAccounts', []);
-        await fetchWalletInfo(); // Fetch wallet info, which now also fetches user info
-
-        // Dacă nu avem userId, înseamnă că este prima conectare, deci adăugăm utilizatorul pe backend
-        if (!user.userId) {
-          await addUserToBackend(wallet.walletAddress);  // Adăugăm utilizatorul pe backend doar la prima conectare
-        }
-
-        // Salvăm datele doar ale portofelului în Pinia și localStorage
-        localStorage.setItem('walletAddress', wallet.walletAddress);
-        localStorage.setItem('balance', wallet.balance);
-        localStorage.setItem('userId', user.userId);
-        localStorage.setItem('firstName', user.firstName);  // Salvăm firstName
-        localStorage.setItem('lastName', user.lastName);    // Salvăm lastName
-
-        window.ethereum.on('accountsChanged', async (accounts) => {
-          wallet.walletAddress = accounts[0]; // Actualizăm adresa de portofel
-          await fetchWalletInfo();  // Actualizăm doar informațiile despre portofel (nu și userul)
-          await addNewWallet(wallet.walletAddress);  // Adăugăm noul portofel în backend
-        });
-
-      } catch (error) {
-        console.error('User rejected the request');
-      }
-    } else {
-      alert('Please install MetaMask!');
-    }
-  }
-
-  // Funcție pentru obținerea informațiilor despre portofel
-  async function fetchWalletInfo() {
     if (!window.ethereum) return alert('Please install MetaMask!');
     
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
-    wallet.walletAddress = await signer.getAddress();
-    const balanceWei = await provider.getBalance(wallet.walletAddress);
-    wallet.balance = ethers.formatEther(balanceWei);
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send('eth_requestAccounts', []);
+      await fetchWalletInfo();
 
-    if (user.userId === null) {
-      await fetchUserInfo();  // Doar dacă userId nu este deja prezent
+      if (!user.userId) {
+        await addUserToBackend(wallet.walletAddress);
+      }
+
+      // Listen for account changes in MetaMask
+      window.ethereum.on('accountsChanged', async (accounts) => {
+        wallet.walletAddress = accounts[0];
+        await fetchWalletInfo();
+        await addNewWallet(wallet.walletAddress);
+      });
+    } catch (error) {
+      console.error('User rejected the request:', error);
     }
   }
 
-  // Funcție pentru obținerea informațiilor despre utilizator
+  // Logout user and clear sessionStorage, redirecting to home page
+  function logout() {
+    sessionStorage.clear(); // Clear all session data
+    wallet.walletAddress = '';
+    wallet.balance = '';
+    user.userId = null;
+    user.name = '';
+    user.hasAccessCode = false;
+
+    router.push('/'); // Redirect to home page
+  }
+
+  // Fetch wallet info (address and balance)
+  async function fetchWalletInfo() {
+    if (!window.ethereum) return alert('Please install MetaMask!');
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      wallet.walletAddress = await signer.getAddress();
+      const balanceWei = await provider.getBalance(wallet.walletAddress);
+      wallet.balance = ethers.formatEther(balanceWei);
+
+      if (!user.userId) {
+        await fetchUserInfo();
+      }
+    } catch (error) {
+      console.error('Error fetching wallet info:', error);
+    }
+  }
+
+  // Add new wallet address to the backend
+  async function addNewWallet(walletAddress) {
+    if (!user.userId) {
+      console.error('User ID not available. Cannot associate wallet.');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/add_new_wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: walletAddress, user_id: user.userId }),
+      });
+
+      if (!response.ok) throw new Error('Failed to add new wallet to backend');
+
+      console.log('New wallet added successfully to the backend');
+    } catch (error) {
+      console.error(error.message);
+    }
+  }
+
+  // Fetch user data from the backend using the wallet address
   async function fetchUserInfo() {
     if (!wallet.walletAddress) return console.error('No wallet address available');
-    
+
     try {
       const response = await fetch(`http://localhost:5000/user/${wallet.walletAddress}`);
       if (response.ok) {
         const userData = await response.json();
-        user.userId = userData.user_id; // Salvăm userId în Pinia
-        user.firstName = userData.first_name; // Preluăm firstName din backend
-        user.lastName = userData.last_name; // Preluăm lastName din backend
-
-        // Salvăm firstName și lastName în localStorage
-        localStorage.setItem('firstName', user.firstName);
-        localStorage.setItem('lastName', user.lastName);
+        user.userId = userData.user_id;
+        sessionStorage.setItem('userId', user.userId);
+        user.name = userData.name;
+        user.hasAccessCode = !!userData.access_code;
       } else {
         console.error('Failed to fetch user data');
       }
@@ -88,41 +128,12 @@ export const useWalletStore = defineStore('wallet', () => {
     }
   }
 
-  // Funcție pentru adăugarea unui nou portofel în backend
-  async function addNewWallet(walletAddress) {
-    if (!user.userId) {
-      console.error('User ID not available. Cannot associate wallet.');
-      return;
-    }
-
-    const response = await fetch('http://localhost:5000/add_new_wallet', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        wallet_address: walletAddress,
-        user_id: user.userId,  // Folosim userId din store
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to add new wallet to backend');
-    } else {
-      console.log('New wallet added successfully to the backend');
-    }
-  }
-
-  // Funcție pentru adăugarea utilizatorului pe backend
+  // Add user to the backend when they first connect
   async function addUserToBackend(walletAddress) {
     const response = await fetch('http://localhost:5000/add_user', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        wallet_address: walletAddress,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: walletAddress }),
     });
 
     if (!response.ok) {
@@ -131,44 +142,6 @@ export const useWalletStore = defineStore('wallet', () => {
       console.log('User added to backend successfully');
     }
   }
-
-  // Funcție pentru deconectarea utilizatorului
-  function logout() {
-    // Ștergem datele doar din Pinia și localStorage pentru portofel și userId
-    localStorage.removeItem('walletAddress');
-    localStorage.removeItem('balance');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('firstName'); // Ștergem firstName din localStorage
-    localStorage.removeItem('lastName');  // Ștergem lastName din localStorage
-
-    wallet.walletAddress = '';
-    wallet.balance = '';
-    user.userId = null;
-    user.firstName = '';  // Nu mai păstrăm firstName în Pinia
-    user.lastName = '';   // Nu mai păstrăm lastName în Pinia
-
-    window.location.reload();
-  }
-
-  // Încarcă datele din localStorage la începutul aplicației
-  function loadFromLocalStorage() {
-    const storedWalletAddress = localStorage.getItem('walletAddress');
-    const storedBalance = localStorage.getItem('balance');
-    const storedUserId = localStorage.getItem('userId');
-    const storedFirstName = localStorage.getItem('firstName');
-    const storedLastName = localStorage.getItem('lastName');
-
-    if (storedWalletAddress && storedBalance && storedUserId) {
-      wallet.walletAddress = storedWalletAddress;
-      wallet.balance = storedBalance;
-      user.userId = storedUserId;
-      user.firstName = storedFirstName; // Restaurăm firstName din localStorage
-      user.lastName = storedLastName;   // Restaurăm lastName din localStorage
-    }
-  }
-
-  // Apelăm această funcție la crearea store-ului pentru a asigura încărcarea datelor din localStorage la inițializare
-  loadFromLocalStorage();
 
   return { wallet, user, connectWallet, fetchWalletInfo, logout };
 });

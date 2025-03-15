@@ -2,8 +2,8 @@ from config import db
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(50), nullable=True)
-    last_name = db.Column(db.String(50), nullable=True)
+    name = db.Column(db.String(50), nullable=True)
+    access_code = db.Column(db.String(50), nullable=True)
     wallets = db.relationship('Wallet', backref='user', lazy=True)
 
 class Wallet(db.Model):

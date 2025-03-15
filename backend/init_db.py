@@ -1,7 +1,7 @@
-from config import app, db  # Importă aplicația Flask și obiectul db
-from models import User, Wallet, Document  # Importă modelele
+from config import app, db  
+from models import User, Wallet, Document  
 
-# Creează tabelele în baza de date
+# Create table in Database
 with app.app_context():
     db.create_all()
     print("Tabelele au fost create cu succes!")
