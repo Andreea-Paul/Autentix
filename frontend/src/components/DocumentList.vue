@@ -29,14 +29,6 @@ const documents = ref([])
 const currentPage = ref(1)
 const itemsPerPage = 3
 
-// Computed: paginated documents.
-const paginatedDocuments = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return documents.value.slice(start, start + itemsPerPage)
-})
-
-// Computed: total pages.
-const totalPages = computed(() => Math.ceil(documents.value.length / itemsPerPage) || 1)
 
 // Formats a date using the Romanian locale.
 function formatDate(date) {
@@ -72,6 +64,16 @@ async function fetchUserDocuments() {
     toast.error('Eroare la preluarea documentelor:', error)
   }
 }
+
+// Computed: paginated documents.
+const paginatedDocuments = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return documents.value.slice(start, start + itemsPerPage)
+})
+
+// Computed: total pages.
+const totalPages = computed(() => Math.ceil(documents.value.length / itemsPerPage) || 1)
+
 
 // Increments current page.
 function nextPage() {

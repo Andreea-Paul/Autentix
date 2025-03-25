@@ -9,7 +9,7 @@
           <input type="text" v-model="newName" placeholder="Introdu Nume" class="w-full p-2 mb-2 rounded-md bg-white/70">
           <input type="text" v-model="newAccessCode" placeholder="Introdu Cod Acces" class="w-full p-2 mb-2 rounded-md bg-white/70">
           <button type="submit" class="w-full bg-gradient-to-r from-red-950 to-red-600 text-white p-2 rounded-md hover:from-red-800 hover:to-red-500 transition-all duration-300 ease-in-out">
-            Update
+            Modifică
           </button>
         </form>
       </div>
@@ -26,12 +26,7 @@
   const newAccessCode = ref('')
   const showDropdown = ref(false)
   const dropdownRef = ref(null)
-  
-  // Toggles the dropdown visibility.
-  function toggleDropdown(event) {
-    event.stopPropagation()
-    showDropdown.value = !showDropdown.value
-  }
+ 
   
   // Sends updated user info to the backend.
   function updateUserInfo() {
@@ -66,6 +61,12 @@
       .catch(() => {
         toast.error('Eroare la actualizarea datelor.')
       })
+  }
+   
+  // Toggles the dropdown visibility.
+  function toggleDropdown(event) {
+    event.stopPropagation()
+    showDropdown.value = !showDropdown.value
   }
   
   // Closes the dropdown when clicking outside.
