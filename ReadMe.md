@@ -1,6 +1,6 @@
 Overview
 
-AutentiX is an web-based simulation app that allows its users to store and verify documents hashes on a blockain. By recording cryptographic hashes on a decentralized Ethereum ledger, the system ensures that each entry is permanent and tamper-proof. This mechanism not only deters forgery but also provides a reliable method for verifying document authenticity. 
+AutentiX is an web-based simulation app that allows its users to store and verify documents hashes on a blockchain. By recording cryptographic hashes on a decentralized Ethereum ledger, the system ensures that each entry is permanent and tamper-proof. This mechanism not only deters forgery but also provides a reliable method for verifying document authenticity. 
 
 Features
     Blockchain Storage: Store document hashes securely on a local Ethereum blockchain(which is simulated by Ganache).
